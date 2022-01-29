@@ -1,0 +1,4 @@
+#################
+# Template file #
+#################
+#IP,User,Password,Camera_Name,Owner,Device_Type
