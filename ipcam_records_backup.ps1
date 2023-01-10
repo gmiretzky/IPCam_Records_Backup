@@ -1,6 +1,6 @@
 #This is the main function for the playback backup utility 
 #Setup some varibles 
-$working_path = "H:\GUY\reolink_powershell_scripts"
+$working_path = "H:\reolink_powershell_scripts"
 $configuration_file = "reolink_playbackup.conf"
 
 #start 
