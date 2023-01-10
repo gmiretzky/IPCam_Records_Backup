@@ -8,18 +8,52 @@ Param([Parameter(Mandatory=$true)][string] $camera_ip,
         [Parameter(Mandatory=$true)][string] $working_path
 )
 
-add-type @"
+#Write Log funciton 
+function Write-Log{
+    Param([Parameter(Mandatory=$true)][string] $Message,
+          [Parameter(Mandatory=$true)][string] $camera_name,
+          [Parameter(Mandatory=$false)][string] $level = "Error",
+          [Parameter(Mandatory=$false)][string] $working_path = $working_path)
+    
+    $logfile = "$working_path\logs\download_playback_$($camera_name).log"
+    $d = Get-Date -Format "yyyyMMddHHmm"
+    $line = "$($d)|$($level)|$Message"
+    $line | Out-File -Append -FilePath $logfile 
+}
+
+Write-Log -Message "Starting..." -camera_name $name
+
+if (-not ([System.Management.Automation.PSTypeName]'ServerCertificateValidationCallback').Type)
+{
+$certCallback = @"
+    using System;
     using System.Net;
+    using System.Net.Security;
     using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
+    public class ServerCertificateValidationCallback
+    {
+        public static void Ignore()
+        {
+            if(ServicePointManager.ServerCertificateValidationCallback ==null)
+            {
+                ServicePointManager.ServerCertificateValidationCallback += 
+                    delegate
+                    (
+                        Object obj, 
+                        X509Certificate certificate, 
+                        X509Chain chain, 
+                        SslPolicyErrors errors
+                    )
+                    {
+                        return true;
+                    };
+            }
         }
     }
 "@
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+    Add-Type $certCallback
+ }
+[ServerCertificateValidationCallback]::Ignore()
 
 #A funciton to get a list of files ready to download
 function Get-Files{
@@ -34,7 +68,7 @@ function Get-Files{
     $url_search = $url+"Search&token=$($token)"
     try
     {
-        $res = Invoke-RestMethod -Uri $url_search -Method POST -Body $body -ErrorAction SilentlyContinue
+        $res = Invoke-RestMethod -Uri $url_search -Method POST -Body $body -ErrorAction SilentlyContinue -SkipCertificateCheck 
         if ($res.value.SearchResult.File.Count -lt 1)
         {
             #Why we have no files ?!?! 
@@ -59,12 +93,11 @@ function Get-Token{
          [Parameter(Mandatory=$true)][string] $username,
          [Parameter(Mandatory=$true)][string] $password
     )
-    $result = @()
     $url_login = $url+'Login&token=null'
     $body = '[{"cmd":"Login","param":{"User":{"userName":"'+$($username)+'","password":"'+$($password)+'"}}}]'
     try
     {
-        $res = Invoke-RestMethod -Uri $url_login -Method POST -Body $body -ErrorAction SilentlyContinue
+        $res = Invoke-RestMethod -Uri $url_login -Method POST -Body $body -ErrorAction SilentlyContinue -SkipCertificateCheck 
         if ($res.value.Token.name.Length -gt 3)
         {
             return $true,$res.value.Token.name
@@ -82,23 +115,10 @@ function Get-Token{
     }
 }
 
-#Write Log funciton 
-function Write-Log{
-    Param([Parameter(Mandatory=$true)][string] $Message,
-          [Parameter(Mandatory=$true)][string] $camera_name,
-          [Parameter(Mandatory=$false)][string] $level = "Error",
-          [Parameter(Mandatory=$false)][string] $working_path = $working_path)
-    
-    $logfile = "$working_path\logs\download_playback_$($camera_name).log"
-    $d = Get-Date -Format "yyyyMMddHHmm"
-    $line = "$($d)|$($level)|$Message"
-    $line | Out-File -Append -FilePath $logfile 
-}
-
 
 #Start of script: 
 #Base Path
-$base_path = "$($backup_path)$($owner)\$($name)"
+$base_path = "$($backup_path)\$($owner)\$($name)"
 
 #Base URL
 $baseurl = "https://$($camera_ip)/cgi-bin/api.cgi?cmd="
@@ -170,7 +190,7 @@ foreach ($file in $files[1])
         #Check if file already here ...
         if (!(Test-Path -Path $path -PathType Leaf))
         {
-            Invoke-WebRequest -Uri $url -OutFile $path
+            Invoke-WebRequest -Uri $url -OutFile $path -SkipCertificateCheck 
         }
         #wait until next file .. 
         Start-Sleep -Milliseconds 100 
@@ -184,3 +204,4 @@ foreach ($file in $files[1])
         start-sleep -Seconds 10
     }
 }
+
