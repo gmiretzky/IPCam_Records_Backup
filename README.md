@@ -16,6 +16,9 @@ For example, if the device type is reolink, the script will be:
 workers/reolink/worker.ps1 
 
 
-
+Requirements: 
+PowerShell 7.3.1
+This script uses the -SkipCertificateCheck for Invoke-RestMethod . For it to work, there is a need to install PowerShell 7.3.1 (This is the tested version). 
+You can use 'choco install powershell-core' 
 
 This is still under build - should be consider as beta only. 
