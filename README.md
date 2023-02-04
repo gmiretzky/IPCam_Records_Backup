@@ -11,9 +11,16 @@ The device listfile contains infromation regarding the devices.
 
 For each device, under the devie list file, will have the type of the device, aka - Device_Type 
 The device type is an ID that will cause the backup script to run the worker script that is assign to that same Device_Type. 
-the backup script will try to run the script name worker.ps1 witch is located under the workers/device_type/ folder. 
+Each worker file is located in its own directory under the main workers folder .
+The worker.ps1 file , contain a defenition of a worker class. 
+the backup script will import the worker class and will run the [worker]::RunBackup() function. 
 For example, if the device type is reolink, the script will be:
 workers/reolink/worker.ps1 
+And the backup will be done using: 
+#Create new worker: 
+$g=[worker]::new(camera_ip, username, password , camera_name, owner_name, number of days to backup, backup path, working path)
+#Run backup
+$g.RunBackup()
 
 
 Requirements: 
